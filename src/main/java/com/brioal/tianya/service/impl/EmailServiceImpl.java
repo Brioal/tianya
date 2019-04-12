@@ -65,6 +65,8 @@ public class EmailServiceImpl implements EmailService {
             //加入邮件
             messageHelper.addAttachment(bookBean.getTitle()+".txt", file);
             mailSender.send(mailMessage);
+            bookBean.setSend(true);
+            mBookRepository.save(bookBean);
         } catch (MessagingException e) {
             e.printStackTrace();
         }

@@ -44,6 +44,9 @@ public class BookBean extends EntityBean {
     // 是否全部完成
     private boolean done;
 
+    // 是否推送过了
+    private boolean send;
+
 
     public String getSize() {
         if (title == null) {
