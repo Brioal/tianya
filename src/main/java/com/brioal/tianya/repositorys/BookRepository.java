@@ -28,6 +28,13 @@ public interface BookRepository extends JpaRepository<BookBean, Integer> , JpaSp
 
 
     /**
+     * 根据抓取状态获取书本
+     * @param done
+     * @return
+     */
+    public BookBean findFirstByDoneEqualsOrderByReadCountDesc(boolean done);
+
+    /**
      * 当前书籍是否已经存在
      *
      * @param title

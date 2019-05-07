@@ -62,4 +62,18 @@ public class RandomUtil {
         }
         return new String(text);
     }
+
+    /**
+     * 返回一个随机的间隔时间 3~13秒
+     *
+     * @return
+     */
+    public static long randomTime() {
+        Random random = new Random();
+        long result = (long) (Math.random() * 10 * 1000);
+        System.out.println("随机时间:" + result + 3000);
+        return result + 3000;
+    }
+
+
 }

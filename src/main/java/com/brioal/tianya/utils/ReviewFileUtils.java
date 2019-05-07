@@ -2,7 +2,6 @@ package com.brioal.tianya.utils;
 
 
 import com.brioal.tianya.config.Config;
-import com.sun.javafx.font.FontFactory;
 
 import org.dom4j.DocumentException;
 import org.slf4j.Logger;

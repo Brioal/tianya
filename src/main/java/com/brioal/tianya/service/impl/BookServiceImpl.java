@@ -5,6 +5,7 @@ import com.brioal.tianya.config.Config;
 import com.brioal.tianya.repositorys.BookRepository;
 import com.brioal.tianya.service.BookService;
 import com.brioal.tianya.service.FileService;
+import com.brioal.tianya.utils.RandomUtil;
 import com.brioal.tianya.utils.TextUtil;
 import com.brioal.tianya.utils.TianyaDateFormatUtl;
 
@@ -77,7 +78,7 @@ public class BookServiceImpl implements BookService {
                 }
                 // 阅读量
                 list.add(cb.greaterThanOrEqualTo(root.<Long>get("readCount"), read));
-                query.orderBy(cb.desc(root.get("editTime")));
+                query.orderBy(cb.desc(root.get("readCount")));
                 Predicate[] p = new Predicate[list.size()];
                 return cb.and(list.toArray(p));
             }
@@ -140,14 +141,6 @@ public class BookServiceImpl implements BookService {
 
     }
 
-    /**
-     * 返回一个随机的间隔时间
-     *
-     * @return
-     */
-    private long getRandomTime() {
-        return (long) (3000 + (Math.random() * 3000));
-    }
 
     /**
      * 开始抓取文本内容
@@ -167,7 +160,6 @@ public class BookServiceImpl implements BookService {
         try {
             doc = Jsoup.connect(url).get();
             Elements bbs = doc.select("div[_host~=" + bookBean.getPeople() + "]");
-            System.out.println(bbs.size());
             // 写入到文件
             File file = new File(Config.getFullFilePath(title));
             BufferedWriter writer = new BufferedWriter(new FileWriter(file, true));
@@ -191,6 +183,9 @@ public class BookServiceImpl implements BookService {
                 System.out.println("没有下一页了,结束");
                 bookBean.setDone(true);
                 mBookRepository.save(bookBean);
+                // 查询一个没有抓取的然后抓取
+                BookBean nextBean = mBookRepository.findFirstByDoneEqualsOrderByReadCountDesc(false);
+                crawTxt(nextBean.getId());
                 return;
             }
             String nextUrl = e_next.attr("href");
@@ -207,9 +202,9 @@ public class BookServiceImpl implements BookService {
                     System.out.println("开始爬取下一页文本:" + fullUrl);
                     parseContent(bookBean, fullUrl);
                 }
-            }, getRandomTime());
+            }, RandomUtil.randomTime());
 
-        } catch (ConnectException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             // 网络抓取失败,充实
             System.out.println("3秒后重试:" + url);
@@ -219,10 +214,7 @@ public class BookServiceImpl implements BookService {
                 public void run() {
                     parseContent(bookBean, url);
                 }
-            }, getRandomTime());
-        } catch (Exception e) {
-            e.printStackTrace();
-            Config.IS_TXT_CRAWING = false;
+            }, RandomUtil.randomTime());
         }
     }
 
@@ -270,13 +262,17 @@ public class BookServiceImpl implements BookService {
                 }
                 String people = e_people.text();
                 System.out.println(people);
-                // 获取阅读李安
+                // 获取阅读量
                 Element e_read = tds.get(2);
                 if (e_read == null) {
                     continue;
                 }
                 long read = Long.parseLong(e_read.text());
                 System.out.println(read);
+                // 阅读量小于1w,则不抓取
+                if (read < 10000) {
+                    continue;
+                }
                 // 获取阅读李安
                 Element e_review = tds.get(3);
                 if (e_review == null) {
@@ -334,7 +330,7 @@ public class BookServiceImpl implements BookService {
                     System.out.println("开始下一页:" + nextAddress);
                     parseBook(fullUrl);
                 }
-            }, getRandomTime());
+            }, RandomUtil.randomTime());
 
         } catch (ConnectException e) {
             e.printStackTrace();
@@ -346,7 +342,7 @@ public class BookServiceImpl implements BookService {
                 public void run() {
                     parseBook(url);
                 }
-            }, getRandomTime());
+            }, RandomUtil.randomTime());
         } catch (Exception e) {
             e.printStackTrace();
             // 出错之后抓取停止

@@ -56,6 +56,7 @@ public class EmailServiceImpl implements EmailService {
         MimeMessageHelper messageHelper = null;
         try {
             messageHelper = new MimeMessageHelper(mailMessage, true);
+//            messageHelper.setTo("974918440@kindle.cn");
             messageHelper.setTo("brioal@kindle.cn");
             messageHelper.setFrom("brioal2019@163.com");
             messageHelper.setSubject("主题："+bookBean.getTitle());
