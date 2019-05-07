@@ -34,7 +34,7 @@ public class Config {
     /**
      * 项目的主目录
      */
-    public static String PROJECT_DIR = "C:/Tianya";
+    public static String PROJECT_DIR = "/Tianya";
     /**
      * 普通文件的目录名称
      */
@@ -72,16 +72,6 @@ public class Config {
         }
         return "/txts/" + title + ".txt";
     }
-
-
-    /**
-     * 打分系统url
-     */
-    public static String URL_MARK = "http://61.178.110.2:8010/mark_login";
-    /**
-     * 邮件用的版权信息
-     */
-    public static String VERSION_FOR_EMAIl = "@2019 甘肃省计算中心 联系电话:0931-123456";
 
     /**
      * 返回文件全路径
