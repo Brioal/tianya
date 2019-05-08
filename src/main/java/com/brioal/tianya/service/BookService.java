@@ -28,13 +28,18 @@ public interface BookService {
     /**
      * 抓取书本列表
      */
-    public void crawBook();
+    public void crawMenu();
 
     /**
-     * 抓取txt文本
+     * 抓取书本
      *
      * @param id
      */
-    public void crawTxt(int id);
+    public void crawBook(int id);
+
+    /**
+     * 抓取没抓取的文本
+     */
+    public void crawNextNeededBook();
 
 }

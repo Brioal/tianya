@@ -11,38 +11,49 @@ import java.io.File;
 
 public class Config {
 
+    /**
+     * 刷新状态
+     */
+    public static void refreshState() {
+        Config.CRAW_CONFIG_BOOK_ID = -1;
+        Config.CRAW_CONFIG_PAGE = 0;
+        Config.CRAW_CONFIG_BOOK_NAME = "";
+        Config.CRAW_CONFIG_STATUS_BOOK_ING = false;
+        Config.CRAW_CONFIG_STATUS_MENU_ING = false;
+    }
+    /**
+     * 书本的id
+     */
+    public static int CRAW_CONFIG_BOOK_ID = -1;
 
     /**
-     * 是否正在抓取书单
+     * 当前抓取的书本的页数
      */
-    public static boolean IS_MENU_CRAWING = false;
-    /**
-     * 是否正在抓取书本
-     */
-    public static boolean IS_TXT_CRAWING = false;
+    public static int CRAW_CONFIG_PAGE = 0;
+
 
     /**
-     * 正在抓取的书本的id
+     * 当前抓取的书本的名称
      */
-    public static int TXT_ID = -1;
+    public static String CRAW_CONFIG_BOOK_NAME = "";
+
 
     /**
-     * 当年页数
+     * 当前是否正在抓取书本
      */
-    public static int CURRENT_INDEX = 0;
+    public static boolean CRAW_CONFIG_STATUS_BOOK_ING = false;
+
+
+    /**
+     * 当前是否正在抓取书单
+     */
+    public static boolean CRAW_CONFIG_STATUS_MENU_ING = false;
+
 
     /**
      * 项目的主目录
      */
     public static String PROJECT_DIR = "/Tianya";
-    /**
-     * 普通文件的目录名称
-     */
-    public static String REGULAR_FILE_DIR_NAME = "saveFiles";
-    /**
-     * 模板文件的存放位置
-     */
-    public static String TEMPLATE_FILE_DIR_NAME = "templates";
 
     /**
      * 首页url
@@ -83,10 +94,5 @@ public class Config {
         return PROJECT_DIR + "/" + path;
     }
 
-    /**
-     * 邮箱发送地址，
-     * 以后需要改变
-     */
-    public static String SEND_EMAIL_ADDRESS = "gspcc2018@163.com";
 
 }

@@ -4,7 +4,7 @@ import com.brioal.tianya.bean.BookBean;
 import com.brioal.tianya.config.Config;
 import com.brioal.tianya.repositorys.BookRepository;
 import com.brioal.tianya.service.BookService;
-import com.brioal.tianya.service.FileService;
+import com.brioal.tianya.service.EmailService;
 import com.brioal.tianya.utils.RandomUtil;
 import com.brioal.tianya.utils.TextUtil;
 import com.brioal.tianya.utils.TianyaDateFormatUtl;
@@ -18,13 +18,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -45,12 +45,12 @@ public class BookServiceImpl implements BookService {
 
     private BookRepository mBookRepository;
 
-    private FileService mFileService;
+    private EmailService mEmailService;
 
-    @Qualifier("fileServiceImpl")
+    @Qualifier("emailServiceImpl")
     @Autowired
-    public void setFileService(FileService fileService) {
-        mFileService = fileService;
+    public void setEmailService(EmailService emailService) {
+        mEmailService = emailService;
     }
 
     @Autowired
@@ -90,14 +90,15 @@ public class BookServiceImpl implements BookService {
     /**
      * 开始抓取书本
      */
+    @Async
     @Override
-    public void crawBook() {
+    public void crawMenu() {
         // 设置状态为开始
-        Config.IS_MENU_CRAWING = true;
-        Config.CURRENT_INDEX = 0;
+        Config.CRAW_CONFIG_STATUS_MENU_ING = true;
+        Config.CRAW_CONFIG_PAGE = 0;
         // 开始抓取
         String homeUrl = "http://bbs.tianya.cn/list-16-1.shtml";
-        parseBook(homeUrl);
+        parseMenu(homeUrl);
     }
 
     /**
@@ -105,8 +106,9 @@ public class BookServiceImpl implements BookService {
      *
      * @param id
      */
+    @Async
     @Override
-    public void crawTxt(int id) {
+    public void crawBook(int id) {
         BookBean bookBean = mBookRepository.findById(id).get();
         if (bookBean == null) {
             return;
@@ -120,9 +122,11 @@ public class BookServiceImpl implements BookService {
         // 刷新时间
         TianyaDateFormatUtl.handleEdit(bookBean);
         mBookRepository.save(bookBean);
-        // 开始抓取文本内容
-        Config.IS_TXT_CRAWING = true;
-        Config.CURRENT_INDEX = 0;
+        // 设置状态
+        Config.CRAW_CONFIG_STATUS_BOOK_ING= true;
+        Config.CRAW_CONFIG_BOOK_ID= id;
+        Config.CRAW_CONFIG_BOOK_NAME = bookBean.getTitle();
+        Config.CRAW_CONFIG_PAGE = 0;
         // 创建文件/清空文件
         String filePath = Config.getFullFilePath(title);
         File file = new File(filePath);
@@ -138,7 +142,6 @@ public class BookServiceImpl implements BookService {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
 
@@ -149,12 +152,12 @@ public class BookServiceImpl implements BookService {
      * @param url
      */
     private void parseContent(BookBean bookBean, String url) {
-        if (!Config.IS_TXT_CRAWING) {
+        if (!Config.CRAW_CONFIG_STATUS_BOOK_ING) {
             // 手动停止了
             System.out.println("手动停止了");
             return;
         }
-        Config.CURRENT_INDEX++;
+        Config.CRAW_CONFIG_PAGE++;
         String title = bookBean.getTitle();
         Document doc = null;
         try {
@@ -171,35 +174,34 @@ public class BookServiceImpl implements BookService {
                 String content = e_content.text();
                 // 替换换行
                 content = content.replaceAll(" 　　", "\r\n　　");
+                // 添加前面的换行符
+                content = "\r\n=================================================\n" + content;
+                System.out.println(content);
                 writer.write(content);
                 writer.write("\n");
-                System.out.println(content);
             }
             writer.close();
             // 获取下一页的位置
             Element e_next = doc.selectFirst(".js-keyboard-next");
             if (e_next == null) {
-                Config.IS_TXT_CRAWING = false;
-                System.out.println("没有下一页了,结束");
-                bookBean.setDone(true);
-                mBookRepository.save(bookBean);
-                // 查询一个没有抓取的然后抓取
-                BookBean nextBean = mBookRepository.findFirstByDoneEqualsOrderByReadCountDesc(false);
-                crawTxt(nextBean.getId());
+                Config.CRAW_CONFIG_STATUS_BOOK_ING = false;
+                saveAndSend(bookBean);
+                crawNextNeededBook();
                 return;
             }
             String nextUrl = e_next.attr("href");
             if (!TextUtil.isStringAvailableAddNotNull(nextUrl)) {
-                Config.IS_TXT_CRAWING = false;
+                Config.CRAW_CONFIG_STATUS_BOOK_ING = false;
+                saveAndSend(bookBean);
+                crawNextNeededBook();
                 return;
             }
             String fullUrl = Config.getFullUrl(nextUrl);
-            // 三秒之后爬去下一页
+            System.out.println("下一页的文本:"+fullUrl);
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    System.out.println("开始爬取下一页文本:" + fullUrl);
                     parseContent(bookBean, fullUrl);
                 }
             }, RandomUtil.randomTime());
@@ -207,7 +209,6 @@ public class BookServiceImpl implements BookService {
         } catch (Exception e) {
             e.printStackTrace();
             // 网络抓取失败,充实
-            System.out.println("3秒后重试:" + url);
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
@@ -218,23 +219,52 @@ public class BookServiceImpl implements BookService {
         }
     }
 
+    private void saveAndSend(BookBean bookBean) {
+        bookBean.setDone(true);
+        mBookRepository.save(bookBean);
+        System.out.println("是否推送了:" + bookBean.isSend());
+        if (bookBean.isSend()) {
+            System.out.println("已经推送,跳过");
+        } else {
+            System.out.println("没有推送,开始推送");
+            mEmailService.sendFile(Config.CRAW_CONFIG_BOOK_ID);
+        }
+    }
+
     /**
-     * 解析网页内容
+     * 开始下一本书的抓取
+     */
+    @Async
+    @Override
+    public void crawNextNeededBook() {
+        System.out.println("没有下一页了,结束");
+        System.out.println("抓取书本完成");
+        System.out.println("寻找下一个没有抓取的文本");
+        // 查询一个没有抓取的然后抓取
+        BookBean nextBean = mBookRepository.findFirstByDoneEqualsOrderByReadCountDesc(false);
+        crawBook(nextBean.getId());
+    }
+
+    /**
+     * 解析菜单内容
      *
      * @param url
      */
-    private void parseBook(String url) {
-        if (!Config.IS_MENU_CRAWING) {
+
+    public void parseMenu(String url) {
+        if (!Config.CRAW_CONFIG_STATUS_MENU_ING) {
             // 手动停止了
             return;
         }
-
         if (!TextUtil.isStringAvailableAddNotNull(url)) {
-            Config.IS_MENU_CRAWING = false;
+            Config.CRAW_CONFIG_STATUS_MENU_ING = false;
             return;
         }
+        System.out.println("正在抓取目录");
+        System.out.println("当前页数:" + Config.CRAW_CONFIG_PAGE);
+        System.out.println("当前地址:" + url);
         try {
-            Config.CURRENT_INDEX++;
+            Config.CRAW_CONFIG_PAGE++;
             Document doc = Jsoup.connect(url).get();
             // 获取所有的tr
             Elements trs = doc.select("tr");
@@ -316,37 +346,33 @@ public class BookServiceImpl implements BookService {
             Element e_next = doc.selectFirst("a[href~=\\/list.jsp\\?item=16&nextid=.+]");
             if (e_next == null) {
                 // 找不到下一页,结束
-                Config.IS_MENU_CRAWING = false;
+                Config.CRAW_CONFIG_STATUS_MENU_ING = false;
+
                 return;
             }
 
             String nextAddress = e_next.attr("href");
             String fullUrl = Config.getFullUrl(nextAddress);
-            // 隔三秒之后再抓取
+            // 之后再抓取
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    System.out.println("开始下一页:" + nextAddress);
-                    parseBook(fullUrl);
+                    parseMenu(fullUrl);
                 }
             }, RandomUtil.randomTime());
 
-        } catch (ConnectException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             // 网络抓取失败,充实
-            System.out.println("3秒后重试:" + url);
+            System.out.println("抓取目录失败,稍后重试");
             Timer timer = new Timer();
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    parseBook(url);
+                    parseMenu(url);
                 }
             }, RandomUtil.randomTime());
-        } catch (Exception e) {
-            e.printStackTrace();
-            // 出错之后抓取停止
-            Config.IS_MENU_CRAWING = false;
         }
     }
 }

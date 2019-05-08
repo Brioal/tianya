@@ -71,10 +71,11 @@ public class BookController {
     @PostMapping("/state")
     public ResultBean state() {
         HashMap<String, Object> map = new HashMap<>();
-        map.put("book", Config.IS_MENU_CRAWING);
-        map.put("txt", Config.IS_TXT_CRAWING);
-        map.put("txt_id", Config.TXT_ID);
-        map.put("index", Config.CURRENT_INDEX);
+        map.put("id", Config.CRAW_CONFIG_BOOK_ID);
+        map.put("menu", Config.CRAW_CONFIG_STATUS_MENU_ING);
+        map.put("book", Config.CRAW_CONFIG_STATUS_BOOK_ING);
+        map.put("book_name", Config.CRAW_CONFIG_BOOK_NAME);
+        map.put("book_page", Config.CRAW_CONFIG_PAGE);
         return ResultBean.returnSuccess(map);
     }
 
@@ -83,9 +84,9 @@ public class BookController {
      *
      * @return
      */
-    @PostMapping("/craw_book")
+    @PostMapping("/craw_menu")
     public ResultBean startCrawBook() {
-        mBookService.crawBook();
+        mBookService.crawMenu();
         return ResultBean.returnSuccess("");
     }
 
@@ -94,10 +95,9 @@ public class BookController {
      *
      * @return
      */
-    @PostMapping("/craw_txt/{id}")
+    @PostMapping("/craw_book/{id}")
     public ResultBean startCrawTxt(@PathVariable("id") int id) {
-        mBookService.crawTxt(id);
-        Config.TXT_ID = id;
+        mBookService.crawBook(id);
         return ResultBean.returnSuccess("");
     }
 
@@ -117,21 +117,21 @@ public class BookController {
      *
      * @return
      */
-    @PostMapping("/stop_menu")
+    @PostMapping("/stop")
     public ResultBean stopMenu() {
-        Config.IS_MENU_CRAWING = false;
+        Config.refreshState();
         return ResultBean.returnSuccess("");
     }
 
+
     /**
-     * 停止抓取书单
+     * 开始抓取内容
      *
      * @return
      */
-    @PostMapping("/stop_txt")
+    @PostMapping("/start_craw")
     public ResultBean stopTxt() {
-        Config.IS_TXT_CRAWING = false;
-        Config.TXT_ID = -1;
+        mBookService.crawNextNeededBook();
         return ResultBean.returnSuccess("");
     }
 }

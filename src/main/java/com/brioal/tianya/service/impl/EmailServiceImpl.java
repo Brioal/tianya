@@ -48,10 +48,12 @@ public class EmailServiceImpl implements EmailService {
     @Async
     @Override
     public void sendFile(int id) {
+        System.out.println("开始推送:");
         BookBean bookBean = mBookRepository.findById(id).get();
         if (bookBean == null) {
             return;
         }
+        System.out.println("标题:"+bookBean.getTitle());
         MimeMessage mailMessage = mailSender.createMimeMessage();
         MimeMessageHelper messageHelper = null;
         try {
@@ -61,15 +63,18 @@ public class EmailServiceImpl implements EmailService {
             messageHelper.setFrom("brioal2019@163.com");
             messageHelper.setSubject("主题："+bookBean.getTitle());
             messageHelper.setText("附件");
-
             FileSystemResource file = new FileSystemResource(new File(Config.getFullFilePath(bookBean.getTitle())));
             //加入邮件
             messageHelper.addAttachment(bookBean.getTitle()+".txt", file);
             mailSender.send(mailMessage);
             bookBean.setSend(true);
             mBookRepository.save(bookBean);
-        } catch (MessagingException e) {
+            System.out.println("推送成功!");
+        } catch (Exception e) {
             e.printStackTrace();
+            bookBean.setSend(false);
+            mBookRepository.save(bookBean);
+            System.out.println("推送失败!");
         }
     }
 }
