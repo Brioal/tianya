@@ -71,9 +71,9 @@ public class RandomUtil {
     public static long randomTime() {
         Random random = new Random();
         long result = (long) (random.nextInt(10 * 1000));
-        result += 3000;
+        result += 300;
         System.out.println("随机等待时间:" + result / 1000 + "秒");
-        return result + 3000;
+        return result;
     }
 
 
