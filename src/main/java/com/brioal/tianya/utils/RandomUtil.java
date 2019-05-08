@@ -70,7 +70,7 @@ public class RandomUtil {
      */
     public static long randomTime() {
         Random random = new Random();
-        long result = (long) (random.nextInt(5 * 1000));
+        long result = (long) (random.nextInt(3 * 1000));
         result += 300;
         System.out.println("随机等待时间:" + result / 1000 + "秒");
         return result;
